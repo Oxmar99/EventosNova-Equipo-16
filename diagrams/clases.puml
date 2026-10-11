@@ -1,0 +1,80 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Capa de Aplicación (Application Services & Ports)" {
+  
+  class CotizacionService {
+    + registrar_solicitud_de_evento(dto: SolicitudDTO): IDsDTO
+    + generar_nueva_version(dto: VersionDTO): void
+  }
+  
+  class ContratacionService {
+    + aceptar_propuesta(propuesta_id: UUID): void
+    + registrar_anticipo(dto: AnticipoDTO): void
+  }
+  
+  class CambiosService {
+    + solicitar_cambio(dto: CambioDTO): void
+    + autorizar_cambio(evento_id: UUID, cambio_id: UUID): void
+  }
+
+  interface UnitOfWork {
+    + commit(): void
+    + rollback(): void
+  }
+
+  interface RepositorioDeEventos {
+    + obtener(id: UUID): Evento
+    + agregar(evento: Evento): void
+  }
+
+  interface RepositorioDePropuestas {
+    + obtener(id: UUID): Propuesta
+    + agregar(propuesta: Propuesta): void
+  }
+}
+
+package "Capa de Dominio (Model)" {
+  class Evento {
+    + registrar_anticipo(...)
+    + solicitar_cambio(...)
+  }
+  
+  class Propuesta {
+    + aceptar()
+  }
+
+  class PoliticaDeCambios {
+    + evaluar_cargo(...)
+  }
+}
+
+package "Capa de Infraestructura (Persistence & Adapters)" {
+  class SqlAlchemyRepositorioDeEventos {
+    + obtener(id: UUID): Evento
+    + agregar(evento: Evento): void
+  }
+
+  class SqlAlchemyUnitOfWork {
+    + commit(): void
+    + rollback(): void
+  }
+}
+
+' Dependencias entre capas (Inversión de dependencias)
+CotizacionService --> RepositorioDePropuestas : usa
+CotizacionService --> UnitOfWork : usa
+ContratacionService --> RepositorioDeEventos : usa
+ContratacionService --> UnitOfWork : usa
+CambiosService --> RepositorioDeEventos : usa
+CambiosService --> PoliticaDeCambios : usa
+
+SqlAlchemyRepositorioDeEventos ..|> RepositorioDeEventos : implementa
+SqlAlchemyUnitOfWork ..|> UnitOfWork : implementa
+
+CotizacionService ..> Propuesta : coordina
+ContratacionService ..> Evento : coordina
+CambiosService ..> Evento : coordina
+
+@enduml

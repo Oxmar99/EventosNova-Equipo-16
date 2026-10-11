@@ -1,0 +1,99 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Dominio: Eventos Nova" {
+
+  package "Aggregate: Propuesta" {
+    class Propuesta <<Aggregate Root>> {
+      - propuesta_id: UUID
+      - estado: EstadoPropuesta
+      + generar_version_inicial()
+      + aceptar()
+    }
+    
+    class VersionDePropuesta <<Entity>> {
+      - numero_version: NumeroDeVersion
+      - total: Dinero
+      - fecha_creacion: DateTime
+    }
+    
+    class LineaDeServicio <<Value Object>> {
+      - descripcion: String
+      - costo: Dinero
+    }
+  }
+
+  package "Aggregate: Evento" {
+    class Evento <<Aggregate Root>> {
+      - evento_id: UUID
+      - cliente_id: UUID
+      - estado: EstadoEvento
+      - aforo: Aforo
+      + registrar_anticipo(monto: Dinero, admin: Responsable)
+      + solicitar_cambio(cambio: SolicitudDeCambio, politica: PoliticaDeCambios)
+      + liquidar()
+      + cerrar()
+    }
+    
+    class Contrato <<Entity>> {
+      - contrato_id: UUID
+      - monto_firmado: Dinero
+      - fecha_firma: DateTime
+    }
+    
+    class Pago <<Value Object>> {
+      - monto: Dinero
+      - tipo: TipoPago
+      - fecha: DateTime
+    }
+    
+    class SolicitudDeCambio <<Entity>> {
+      - cambio_id: UUID
+      - tipo: TipoCambio
+      - condicion_anterior: String
+      - condicion_nueva: String
+      - estado: EstadoCambio
+    }
+  }
+
+  package "Aggregate: SolicitudDeProveedor" {
+    class SolicitudDeProveedor <<Aggregate Root>> {
+      - solicitud_id: UUID
+      - evento_id: UUID
+      - proveedor_id: UUID
+      - estado: EstadoProveedor
+      - fecha_envio: DateTime
+      + confirmar()
+      + rechazar()
+      + expirar()
+    }
+  }
+
+  package "Domain Services y Value Objects" {
+    class PoliticaDeCambios <<Domain Service>> {
+      + evaluar_cargo(fecha_evento: Date, fecha_cambio: Date, incremento: Dinero): ResultadoEvaluacion
+    }
+    
+    class Dinero <<Value Object>> {
+      - monto: Decimal
+      - moneda: String
+    }
+    
+    class Aforo <<Value Object>> {
+      - cantidad: Integer
+    }
+  }
+}
+
+' Relaciones y límites por identificador
+Propuesta *-- "1..*" VersionDePropuesta : compone
+VersionDePropuesta *-- "1..*" LineaDeServicio : contiene
+Evento *-- "0..1" Contrato : compone
+Evento *-- "*" Pago : incluye
+Evento *-- "*" SolicitudDeCambio : registra
+Evento ..> PoliticaDeCambios : usa
+Propuesta ..> Evento : referencia (evento_id)
+SolicitudDeProveedor ..> Evento : referencia (evento_id)
+
+@enduml
